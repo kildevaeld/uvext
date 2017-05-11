@@ -14,7 +14,7 @@ struct uv_http_s {
 };
 
 struct uv_http_request_s {
-  uv_http_header_l_t *header;
+  uv_http_header_list_t *header;
 };
 
 typedef struct uv_http_s uv_http_t;
