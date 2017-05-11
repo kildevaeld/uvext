@@ -1,9 +1,9 @@
 #ifndef UVEXT_HTTP_HANDLE_H
 #define UVEXT_HTTP_HANDLE_H
 
+#include "header.h"
 #include "request-parser.h"
 #include "uv.h"
-
 /* extends uv_tcp_t (handle) */
 struct uv_http_s {
   uv_tcp_t handle;
@@ -11,6 +11,10 @@ struct uv_http_s {
   uv_http_parse_req_t parse_req;
   void *data;
   // sws_resource_info_t resource_info;
+};
+
+struct uv_http_request_s {
+  uv_http_header_l_t *header;
 };
 
 typedef struct uv_http_s uv_http_t;
