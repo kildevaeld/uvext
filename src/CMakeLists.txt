@@ -8,5 +8,8 @@ set(SOURCES
 )
 
 
+set(LIBRARIES http_parser uv ssl crypto)
+
+
 add_library(uvext ${SOURCES})
-target_link_libraries(uvext  http_parser uv)
+target_link_libraries(uvext  ${LIBRARIES})
