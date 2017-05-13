@@ -7,6 +7,7 @@ include(cmake/http-parser.cmake)
 include(cmake/uv.cmake)
 
 add_subdirectory(libs/boringssl)
+include_subdirectory(libs/boringssl/include)
 add_subdirectory(src)
 include_directories(src)
 add_subdirectory(example)
