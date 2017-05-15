@@ -10,12 +10,23 @@ static int on_header_value(http_parser *parser, const char *hdr, size_t length);
 static int on_body(http_parser *parser, const char *hdr, size_t length);
 static int on_headers_complete(http_parser *parser);
 static int on_message_complete(http_parser *parser);
+static int on_chunk_header(http_parser *parser);
+static int on_chunk_complete(http_parser *parser);
 
 static char *strslice(const char *s, size_t len) {
   char *slice = (char *)malloc(sizeof(char) * (len + 1));
   strncpy(slice, s, len);
   slice[len] = '\0';
   return slice;
+}
+
+static int on_chunk_header(http_parser *parser) {
+  printf("on chunk header\n");
+  return 0;
+}
+static int on_chunk_complete(http_parser *parser) {
+  printf("on chunk complete\n");
+  return 0;
 }
 
 static int on_message_begin(http_parser *parser) {
@@ -96,7 +107,9 @@ static http_parser_settings parser_settings = {
     .on_header_value = on_header_value,
     .on_headers_complete = on_headers_complete,
     .on_message_complete = on_message_complete,
-    .on_body = on_body};
+    .on_body = on_body,
+    .on_chunk_header = on_chunk_header,
+    .on_chunk_complete = on_chunk_complete};
 
 void uv_http_parser_init(uv_http_parse_req_t *parse_req,
                          uv_http_parse_headers_complete_cb on_header_complete,

@@ -19,8 +19,9 @@ void ll_unshift(node_t **head, void *data);
 int ll_length(node_t *head);
 void ll_free(node_t *head);
 int ll_remove(node_t *head, int index);
-void ll_data(node_t *head, int index);
+void *ll_data(node_t *head, int index);
 void ll_foreach_fn(node_t *head, void (*fn)(void *data, int index));
-int ll_index_of(node_t *head, bool (*fn)(void *data, int index));
+int ll_index_of(node_t *head, bool (*fn)(void *data, void *udata, int index),
+                void *udata);
 
 #endif

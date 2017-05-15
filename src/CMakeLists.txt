@@ -5,6 +5,8 @@ set(SOURCES
     http-handle.c
     request-parser.c
     linkedlist.c
+    url.c
+    http.c
 )
 
 

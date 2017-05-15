@@ -13,6 +13,11 @@ typedef struct uv_http_header_s {
 typedef node_t uv_http_header_list_t;
 
 void add_header(uv_http_header_list_t *head, uv_http_header_t *header);
+void uv_add_header(uv_http_header_list_t *head, const char *field,
+                   const char *value);
+
+uv_http_header_list_t *uv_header_new(const char *field, const char *value);
+
 const char *get_header(uv_http_header_list_t *head, const char *field);
 void uv_header_print(uv_http_header_list_t *head);
 // void get_header(uv_http_header_t *headers, const char *field);

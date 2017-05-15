@@ -69,12 +69,23 @@ int ll_remove(node_t *head, int index) {
   return 0;
 }
 
-void ll_data(node_t *head, int index) {}
+void *ll_data(node_t *head, int index) {
+  int i = 0;
+  while (head != NULL) {
+    if (index == i++) {
+      return head->data;
+      ;
+    }
+    head = head->next;
+  }
+  return NULL;
+}
 
-int ll_index_of(node_t *head, bool (*fn)(void *data, int index)) {
+int ll_index_of(node_t *head, bool (*fn)(void *data, void *udata, int index),
+                void *udata) {
   int index = 0;
   while (head != NULL) {
-    if (fn(head->data, index++)) {
+    if (fn(head->data, udata, index++)) {
       return index;
     }
     head = head->next;

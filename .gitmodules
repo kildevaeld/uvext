@@ -7,3 +7,6 @@
 [submodule "libs/boringssl"]
 	path = libs/boringssl
 	url = https://github.com/google/boringssl
+[submodule "libs/url.h"]
+	path = libs/url.h
+	url = https://github.com/jwerle/url.h
