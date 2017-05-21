@@ -1,26 +1,34 @@
-#ifndef UVEXT_HTTP_HEADER_H
-#define UVEXT_HTTP_HEADER_H
+#ifndef UVEXT_HEADER_H
+#define UVEXT_HEADER_H
 
-#include "linkedlist.h"
-
-#define MAX_HEADER 500
+#define UV_HTTP_HEADER_MAX 500
 
 typedef struct uv_http_header_s {
-  char field[MAX_HEADER];
-  char value[MAX_HEADER];
+  char field[UV_HTTP_HEADER_MAX];
+  char value[UV_HTTP_HEADER_MAX];
+  struct uv_http_header_s *next;
 } uv_http_header_t;
 
-typedef node_t uv_http_header_list_t;
+#define uv_http_header_foreach(item, list)                                     \
+  for (uv_http_header_t * (item) = (list); (item); (item) = (item)->next)
 
-void add_header(uv_http_header_list_t *head, uv_http_header_t *header);
-void uv_add_header(uv_http_header_list_t *head, const char *field,
-                   const char *value);
+/**
+ * Create a new header
+ * The user is responsible for freeing it with a call to uv_http_header_free
+ */
+uv_http_header_t *uv_http_header_new();
+/**
+ * Set a header
+ */
+void uv_http_header_set(uv_http_header_t *header, const char *field,
+                        const char *value);
 
-uv_http_header_list_t *uv_header_new(const char *field, const char *value);
+const char *uv_http_header_get(uv_http_header_t *header, const char *field);
+void uv_http_header_unset(uv_http_header_t **header, const char *field);
+void uv_http_header_free(uv_http_header_t *header);
 
-const char *get_header(uv_http_header_list_t *head, const char *field);
-void uv_header_print(uv_http_header_list_t *head);
-// void get_header(uv_http_header_t *headers, const char *field);
-
-void uv_free_headers(uv_http_header_list_t *head);
+/**
+ * Append a header to the header list */
+void uv_http_header_append(uv_http_header_t *head, uv_http_header_t *header);
+int uv_http_header_size(uv_http_header_t *head);
 #endif

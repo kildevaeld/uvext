@@ -21,20 +21,21 @@ static char *strslice(const char *s, size_t len) {
 }
 
 static int on_chunk_header(http_parser *parser) {
-  printf("on chunk header\n");
+  // printf("on chunk header\n");
   return 0;
 }
 static int on_chunk_complete(http_parser *parser) {
-  printf("on chunk complete\n");
+
+  // printf("on chunk complete\n");
   return 0;
 }
 
 static int on_message_begin(http_parser *parser) {
-  debug("message begin %d", parser->status_code);
+  // debug("message begin %d", parser->status_code);
   return 0;
 }
 static int on_url(http_parser *parser, const char *hdr, size_t length) {
-  debug("url");
+  // debug("url");
   return 0;
 }
 static int on_header_field(http_parser *parser, const char *hdr,
@@ -44,47 +45,43 @@ static int on_header_field(http_parser *parser, const char *hdr,
     return 0;
   }
 
-  uv_http_parse_req_t *req = (uv_http_parse_req_t *)parser->data;
+  uv_http_parser_t *req = (uv_http_parser_t *)parser->data;
 
-  req->_c = malloc(sizeof(uv_http_header_t));
+  memset(req->current.field, 0, sizeof(req->current.field));
+  memset(req->current.value, 0, sizeof(req->current.value));
 
-  if (req->_c == NULL) {
-    log_err("memory");
-    return 1;
-  }
+  strncpy(req->current.field, hdr, length);
+  req->current.field[length] = '\0';
 
-  strncpy(req->_c->field, hdr, length);
-  req->_c->field[length] = '\0';
   return 0;
 }
 static int on_header_value(http_parser *parser, const char *hdr,
                            size_t length) {
 
-  uv_http_parse_req_t *req = (uv_http_parse_req_t *)parser->data;
+  uv_http_parser_t *req = (uv_http_parser_t *)parser->data;
 
-  strncpy(req->_c->value, hdr, length);
-  req->_c->value[length] = '\0';
+  strncpy(req->current.value, hdr, length);
+  req->current.value[length] = '\0';
 
-  if (req->headers == NULL)
-    req->headers = ll_new(req->_c);
-  else
-    add_header(req->headers, req->_c);
-  req->_c = NULL;
+  if (req->on_header_complete) {
+    req->on_header_complete(req, req->current.field, req->current.value);
+  }
 
   return 0;
 }
 static int on_headers_complete(http_parser *parser) {
-  uv_http_parse_req_t *req = (uv_http_parse_req_t *)parser->data;
+  uv_http_parser_t *req = (uv_http_parser_t *)parser->data;
   assert(req);
 
   req->status_code = parser->status_code;
 
+  // http_parser_pause(parser, 1);
   if (req->on_headers_complete)
     req->on_headers_complete(req);
   return 0;
 }
 static int on_message_complete(http_parser *parser) {
-  uv_http_parse_req_t *req = (uv_http_parse_req_t *)parser->data;
+  uv_http_parser_t *req = (uv_http_parser_t *)parser->data;
   assert(req);
 
   if (req->on_parse_complete)
@@ -92,7 +89,7 @@ static int on_message_complete(http_parser *parser) {
   return 0;
 }
 static int on_body(http_parser *parser, const char *hdr, size_t length) {
-  uv_http_parse_req_t *req = (uv_http_parse_req_t *)parser->data;
+  uv_http_parser_t *req = (uv_http_parser_t *)parser->data;
   assert(req);
 
   if (req->on_data)
@@ -111,7 +108,7 @@ static http_parser_settings parser_settings = {
     .on_chunk_header = on_chunk_header,
     .on_chunk_complete = on_chunk_complete};
 
-void uv_http_parser_init(uv_http_parse_req_t *parse_req,
+void uv_http_parser_init(uv_http_parser_t *parse_req,
                          uv_http_parse_headers_complete_cb on_header_complete,
                          uv_http_parse_data_cb on_data,
                          uv_http_parse_complete_cb on_parse_complete) {
@@ -122,19 +119,17 @@ void uv_http_parser_init(uv_http_parse_req_t *parse_req,
   parse_req->on_headers_complete = on_header_complete;
   parse_req->on_data = on_data;
   parse_req->on_parse_complete = on_parse_complete;
-
-  parse_req->headers = NULL;
-  parse_req->_c = NULL;
+  parse_req->on_header_complete = NULL;
 }
 
-int uv_http_parser_execute(uv_http_parse_req_t *parse_req, char *buf,
+int uv_http_parser_execute(uv_http_parser_t *parse_req, char *buf,
                            ssize_t nread) {
   return http_parser_execute(&parse_req->parser, &parser_settings, buf, nread);
 }
 
-void uv_http_cleanup_parse_req(uv_http_parse_req_t *parse_req) {
+void uv_http_cleanup_parse_req(uv_http_parser_t *parse_req) {
 
-  uv_free_headers(parse_req->headers);
+  // uv_free_headers(parse_req->headers);
   // free(parse_req->url);
   // free(parse_req->header_line.field);
   // free(parse_req->header_line.value);

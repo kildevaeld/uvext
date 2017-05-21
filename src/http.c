@@ -1,5 +1,5 @@
 #include "http.h"
-
+/*
 static void _on_connect(uv_connect_t *tcp, int status) {
   uv_http_request_t *req = tcp->handle->data;
 
@@ -45,18 +45,14 @@ static void on_resolved(uv_getaddrinfo_t *resolver, int status,
     tmp = tmp->ai_next;
   }
 
-  /*char addr[17] = {'\0'};
-  uv_ip4_name((struct sockaddr_in *)res->ai_addr, addr, 16);
-  fprintf(stderr, "%s\n", addr);*/
 
   uv_freeaddrinfo(res);
   free(resolver);
-}
+}*/
 
-int uvext_http_request(uv_http_request_t *req,
-                       uv_http_request_settings_t *settings) {
+int uvext_http_request(uv_http_req_t *req, uv_http_req_settings_t *settings) {
 
-  struct addrinfo hints;
+  /*struct addrinfo hints;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
@@ -68,5 +64,6 @@ int uvext_http_request(uv_http_request_t *req,
   req->data = settings;
 
   return uv_getaddrinfo(req->loop, resolver, on_resolved, req->url->host, "80",
-                        &hints);
+                        &hints);*/
+  return 0;
 }

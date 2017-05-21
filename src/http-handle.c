@@ -1,16 +1,10 @@
 #include "http-handle.h"
 #include "debug.h"
-#include "request-parser.h"
 #include <stdlib.h>
 
 static void on_req_read(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf);
 static void on_write_end(uv_write_t *req, int status);
 static void on_res_end(uv_handle_t *handle);
-
-static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
-  buf->base = malloc(size);
-  buf->len = size;
-}
 
 #define CHECK(r, msg)                                                          \
   if (r) {                                                                     \
@@ -23,124 +17,29 @@ static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
   fprintf(stderr, "%s: [%s(%d): %s]\n", msg, uv_err_name((r)), r,              \
           uv_strerror((r)));
 
-void on_connect(uv_connect_t *req, int status) {
-
-  if (status == -1) {
-    log_err("error on_write_end");
-    return;
-  }
-
-  int r;
-
-  CHECK(status, "connecting");
-  debug("connecting req");
-
-  // the tcp handle points to our sws_handle_req_t which can store a bit extra
-  // info
-
-  // uv_read_start((uv_stream_t *)handle_req, alloc_cb, on_req_read);
-  char *message = "GET / HTTP/1.1\r\n"
-                  "Content-Type: text/html\r\n\r\n";
-  int len = strlen(message);
-
-  char buffer[100];
-  uv_buf_t buf = uv_buf_init(buffer, sizeof(buffer));
-
-  buf.len = len;
-  buf.base = message;
-
-  uv_write_t write_req;
-
-  int buf_count = 1;
-
-  dbg("writing:\n%s\n", message);
-  uv_write(&write_req, req->handle, &buf, buf_count, on_write_end);
+void uv_http_client_init(uv_loop_t *loop, uv_http_client_t *client) {
+  uv_http_parser_init(&client->parser, NULL, NULL, NULL);
+  client->loop = loop;
+  client->data = NULL;
 }
 
-static void on_req_read(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf) {
-  size_t parsed;
-  uv_http_request_t *handle_req = (uv_http_request_t *)tcp->data;
+void uv_http_request_init(uv_http_req_t *req) {
+  uv_http_parser_init(&req->parser, NULL, NULL, NULL);
 
-  if (nread == UV_EOF) {
-    uv_http_parser_execute(&handle_req->parse_req, buf->base, 0);
-    uv_close((uv_handle_t *)tcp, on_res_end);
-
-  } else if (nread > 0) {
-
-    parsed = uv_http_parser_execute(&handle_req->parse_req, buf->base, nread);
-    if (parsed < nread) {
-      const char *nam =
-          http_errno_name(HTTP_PARSER_ERRNO(&handle_req->parse_req.parser));
-      const char *err = http_errno_description(
-          HTTP_PARSER_ERRNO(&handle_req->parse_req.parser));
-
-      log_err("parsing http req  %s: %s", nam, err);
-      uv_close((uv_handle_t *)tcp, on_res_end);
-    }
-
-  } else {
-    UVERR((int)nread, "reading req req");
-  }
-  if (buf->base)
-    free(buf->base);
-}
-
-static void on_write_end(uv_write_t *req, int status) {
-  if (status == -1) {
-    fprintf(stderr, "error on_write_end");
-    return;
-  }
-  debug("starting read");
-  uv_read_start((uv_stream_t *)req->handle, alloc_cb, on_req_read);
-}
-
-static void uv_http_cleanup(uv_http_t *handle_req) {
-  uv_http_cleanup_parse_req(&handle_req->parse_req);
-}
-
-static void on_res_end(uv_handle_t *handle) {
-  uv_http_request_t *handle_req = (uv_http_request_t *)handle;
-  log_info("[ %3d ] connection closed", 1);
-  // uv_http_cleanup(handle_req);
-}
-
-void uv_http_init(uv_loop_t *loop, uv_http_t *handle_req, int req_id) {
-  uv_http_parser_init(&handle_req->parse_req, NULL, NULL, NULL);
-  uv_tcp_init(loop, &handle_req->handle);
-  handle_req->handle.data = NULL;
-
-  handle_req->id = req_id;
-
-  // All contained types point to parent type, except for the tcp type since its
-  // data property needs
-  // to be used for other pointers, i.e. inside pipe_file.
-  // However since handle_req and tcp point to same address we can upcast tcp to
-  // handle_req when needed.
-  handle_req->parse_req.data = (void *)handle_req;
-}
-
-int uv_http_request_init(uv_loop_t *loop, char *u, uv_http_request_t *req) {
-  uv_http_parser_init(&req->parse_req, NULL, NULL, NULL);
-  uv_url_data_t *url = url_parse(u);
-  if (!url)
-    return 0;
-
-  req->url = url;
-  req->loop = loop;
-  req->headers = NULL; // ll_new();
+  req->data = NULL;
+  req->headers = NULL;
+  req->major = 1;
+  req->minor = 1;
   req->method = HTTP_GET;
-
-  return 1;
+  req->path = "/";
 }
 
-void uv_http_request_cleanup(uv_http_request_t *req) {
-  if (!req)
-    return;
-
-  url_free(req->url);
+static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+  buf->base = malloc(size);
+  buf->len = size;
 }
 
-static int write_method(uv_http_request_t *req, char *buf) {
+static int write_method(uv_http_req_t *req, char *buf) {
   int i = 0;
   switch (req->method) {
   case HTTP_GET:
@@ -167,7 +66,7 @@ static int write_method(uv_http_request_t *req, char *buf) {
   return i;
 }
 
-static int write_request(uv_http_request_t *req, char *buf) {
+static int write_request(uv_http_req_t *req, char *buf) {
 
   int i = write_method(req, buf);
 
@@ -177,48 +76,96 @@ static int write_request(uv_http_request_t *req, char *buf) {
   if (req->minor > -1)
     minor = req->minor;
 
-  int ret =
-      sprintf(buf + i, " %s HTTP/%d.%d\r\n", req->url->path, major, minor);
+  int ret = sprintf(buf + i, " %s HTTP/%d.%d\r\n", req->path, major, minor);
   if (ret < 0) {
     return -1;
   }
   i += ret;
 
-  uv_http_header_t *header;
-
-  ll_foreach(item, req->headers) {
-    if (!item->data)
-      continue;
-    header = (uv_http_header_t *)item->data;
-    int ret = sprintf(buf + i, "%s: %s\r\n", header->field, header->value);
-    if (ret < 0) {
-      return -1;
+  if (req->headers) {
+    uv_http_header_foreach(h, req->headers) {
+      int ret = sprintf(buf + i, "%s: %s\r\n", h->field, h->value);
+      i += ret;
     }
-    i += ret;
   }
 
   memcpy(buf + i, "\r\n", 2);
   i += 2;
+
   return i;
 }
 
-int uv_http_request(uv_stream_t *stream, uv_http_request_t *req,
-                    uv_http_request_settings_t *settings) {
+static void on_write_end(uv_write_t *req, int status) {
+  if (status == -1) {
+    fprintf(stderr, "error on_write_end");
+    return;
+  }
+  debug("write");
+  debug("starting read");
+  req->handle->data = req->data;
+  // uv_read_start((uv_stream_t *)req->handle, alloc_cb, on_req_read);
+}
 
-  if (!req)
-    return 0;
+static void on_req_read(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf) {
+  size_t parsed;
+  uv_http_req_t *handle_req = (uv_http_req_t *)tcp->data;
 
-  req->parse_req.on_parse_complete = settings->on_parse_complete;
-  req->parse_req.on_headers_complete = settings->on_headers_complete;
-  req->parse_req.on_data = settings->on_data;
+  if (nread == UV_EOF) {
 
-  char buffer[500];
-  uv_buf_t buf = uv_buf_init(buffer, sizeof(buffer));
+    uv_http_parser_execute(&handle_req->parser, buf->base, 0);
+    uv_close((uv_handle_t *)tcp, on_res_end);
+  } else if (nread > 0) {
+
+    parsed = uv_http_parser_execute(&handle_req->parser, buf->base, nread);
+
+    if (parsed < nread) {
+      const char *nam =
+          http_errno_name(HTTP_PARSER_ERRNO(&handle_req->parser.parser));
+      const char *err =
+          http_errno_description(HTTP_PARSER_ERRNO(&handle_req->parser.parser));
+
+      log_err("parsing http req  %s: %s", nam, err);
+      uv_close((uv_handle_t *)tcp, on_res_end);
+    }
+  } else {
+    UVERR((int)nread, "reading req req");
+  }
+  if (buf->base)
+    free(buf->base);
+}
+
+static void on_res_end(uv_handle_t *handle) {
+  uv_http_req_t *handle_req = (uv_http_req_t *)handle;
+  log_info("[ %3d ] connection closed", 1);
+  // uv_http_cleanup(handle_req);
+}
+
+int uv_http_request(uv_stream_t *stream, uv_http_req_t *req,
+                    uv_http_req_settings_t *settings) {
+
+  req->parser.on_parse_complete = settings->on_parse_complete;
+  req->parser.on_headers_complete = settings->on_headers_complete;
+  req->parser.on_data = settings->on_data;
+  req->parser.on_header_complete = settings->on_header_complete;
+
+  uv_buf_t buf;
   char message[500];
   buf.len = write_request(req, message);
   buf.base = message;
 
-  uv_write_t write_req;
+  uv_write_t *write_req = malloc(sizeof(uv_write_t));
+  write_req->data = req;
+  // stream->data = req;
+
+  return uv_write(write_req, stream, &buf, 1, on_write_end);
+}
+
+int uv_http_write(uv_http_client_t *client, const char *data, int size) {
+  // O
+  return 0;
+}
+
+int uv_http_request_end(uv_stream_t *stream, uv_http_req_t *req) {
   stream->data = req;
-  return uv_write(&write_req, stream, &buf, 1, on_write_end);
+  uv_read_start(stream, alloc_cb, on_req_read);
 }

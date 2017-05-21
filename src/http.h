@@ -3,7 +3,6 @@
 
 #include "http-handle.h"
 
-int uvext_http_request(uv_http_request_t *req,
-                       uv_http_request_settings_t *settings);
+int uvext_http_request(uv_http_req_t *req, uv_http_req_settings_t *settings);
 
 #endif
