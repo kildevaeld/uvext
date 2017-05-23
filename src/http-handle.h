@@ -6,16 +6,19 @@
 
 typedef enum http_method uv_http_method_t;
 
-typedef struct uv_http_client_s {
-  uv_stream_t handle;
-  uv_http_parser_t parser;
-
-  void *data;
+#define UV_HTTP_REQUEST_DEF                                                    \
+  uv_http_method_t method;                                                     \
+  const char *path;                                                            \
+  uv_http_header_t *headers;                                                   \
+  int major;                                                                   \
+  int minor;                                                                   \
+  uv_http_parser_t parser;                                                     \
+  void *data;                                                                  \
   uv_loop_t *loop;
-} uv_http_client_t;
 
 typedef struct uv_http_req_s {
-  uv_http_method_t method;
+  UV_HTTP_REQUEST_DEF
+  /*uv_http_method_t method;
   const char *path;
   uv_http_header_t *headers;
   int major;
@@ -23,7 +26,7 @@ typedef struct uv_http_req_s {
 
   uv_http_parser_t parser;
   void *data;
-  uv_loop_t *loop;
+  uv_loop_t *loop;*/
 } uv_http_req_t;
 
 typedef void (*uv_http_request_err_cb)(uv_stream_t *stream, uv_http_req_t *req);
@@ -39,13 +42,13 @@ typedef struct uv_http_req_settings_s {
 
 } uv_http_req_settings_t;
 
-void uv_http_client_init(uv_loop_t *loop, uv_http_client_t *client);
-
 void uv_http_request_init(uv_http_req_t *req);
 int uv_http_request(uv_stream_t *stream, uv_http_req_t *req,
                     uv_http_req_settings_t *settings);
 
-int uv_http_write(uv_http_client_t *client, const char *data, int size);
+int uv_http_req_write_headers(uv_write_t *write,uv_stream_t *stream, uv_http_req_t *req, uv_write_cb cb);
+
+// int uv_http_write(uv_http_client_t *client, const char *data, int size);
 
 int uv_http_request_end(uv_stream_t *stream, uv_http_req_t *req);
 

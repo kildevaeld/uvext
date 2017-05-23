@@ -1,12 +1,13 @@
 
 #include <http-handle.h>
+#include <http.h>
+#include <stdlib.h>
 #include <uvext.h>
-
 void on_complete(uv_http_parser_t *req) { printf("parse complete\n"); }
 
 void on_headers(uv_http_parser_t *req) {
 
-  printf("headers complete:\n");
+  printf("headers complete\n");
   /*ll_foreach(item, req->headers) {
     uv_http_header_t *header = item->data;
     printf("  %s: %s\n", header->field, header->value);
@@ -18,44 +19,18 @@ void on_header(uv_http_parser_t *req, const char *field, const char *value) {
 }
 
 void on_data(uv_http_parser_t *req, const char *data, size_t size) {
-  printf("DATA %s\n", data);
+  char buf[size + 1];
+  strncpy(buf, data, size);
+  buf[size] = '\0';
+  printf("data = '%s'\n", buf);
 }
-/*
-void _on_connect(uv_connect_t *tcp, int status) {
-  uv_http_req_t *req = tcp->handle->data;
-
-  printf("connected\n");
-
-  uv_http_req_settings_t settings = {.on_parse_complete = on_complete,
-                                         .on_data = on_data};
-
-  uv_http_request(tcp->handle, req, &settings);
-}
-
-void on_resolved(uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-  if (status < 0) {
-    fprintf(stderr, "getaddrinfo callback error %s\n", uv_err_name(status));
-    return;
-  }
-
-  char addr[17] = {'\0'};
-  uv_ip4_name((struct sockaddr_in *)res->ai_addr, addr, 16);
-  fprintf(stderr, "%s\n", addr);
-
-  uv_connect_t *connect_req = (uv_connect_t *)malloc(sizeof(uv_connect_t));
-  uv_tcp_t *socket = (uv_tcp_t *)malloc(sizeof(uv_tcp_t));
-  uv_tcp_init(resolver->loop, socket);
-  socket->data = resolver->data;
-  uv_tcp_connect(connect_req, socket, (const struct sockaddr *)res->ai_addr,
-                 _on_connect);
-
-  uv_freeaddrinfo(res);
-}*/
 
 static uv_http_req_settings_t settings = {.on_parse_complete = on_complete,
                                           .on_data = on_data,
                                           .on_headers_complete = on_headers,
                                           .on_header_complete = on_header};
+
+static void on_write_end(uv_write_t *req, int status) { printf("write end"); }
 
 void on_connect(uv_connect_t *c, int status) {
   if (status < 0) {
@@ -65,7 +40,7 @@ void on_connect(uv_connect_t *c, int status) {
 
   uv_write_t r;
   uv_buf_t buf;
-  char *msg = "1B\r\nHello, World! Hello, World!\r\n";
+  char *msg = "1B\r\nHello, World! Hello, World!\r\n0\r\n\r\n";
 
   buf.base = msg;
   buf.len = strlen(msg) - 1;
@@ -76,54 +51,51 @@ void on_connect(uv_connect_t *c, int status) {
   uv_http_request_end(c->handle, c->data);
 }
 
+static void oc(uv_http_client_t *client, int status) {
+  if (status < 0) {
+    fprintf(stderr, "getaddrinfo callback error %s\n", uv_err_name(status));
+    return;
+  }
+  printf("on oc\n");
+
+  char *msg = "Hello, World! Hello, World!";
+  uv_buf_t buf;
+  buf.base = msg;
+  buf.len = strlen(msg);
+
+  uv_http_client_write(client, &buf, NULL);
+
+  msg = "Test Mig i øret";
+  buf.base = msg;
+  buf.len = strlen(msg);
+
+  uv_http_client_write(client, &buf, NULL);
+
+  uv_http_client_req_end(client);
+}
+
 int main() {
-
-  /*uv_loop_t *loop = uv_default_loop();
-
-  // 	172.217.6.163
-
-  uv_http_t client;
-
-  // loop への登録
-  uv_http_init(loop, &client, 1);
-  // uv_tcp_init(loop, &client);
-
-  // アドレスの取得
-  struct sockaddr_in req_addr;
-  uv_ip4_addr("172.217.6.163", 80, &req_addr);
-
-  // TCP コネクション用の構造体
-  uv_connect_t connect_req;
-
-  // 接続
-  uv_tcp_connect(&connect_req, (uv_tcp_t *)&client,
-                 (const struct sockaddr *)&req_addr, on_connect);
-
-  uv_run(loop, UV_RUN_DEFAULT);*/
 
   uv_loop_t *loop = uv_default_loop();
 
-  uv_http_req_t req;
-  uv_http_request_init(&req);
+  uv_http_client_req_t req;
+  uv_http_request_init((uv_http_req_t *)&req);
   req.method = HTTP_POST;
   req.headers = uv_http_header_new();
+  req.port = 3000;
+  req.host = "127.0.0.1";
+  // uv_http_header_set(req.headers, "Host", "google.com");
   uv_http_header_set(req.headers, "Host", "localhost:3000");
-  uv_http_header_set(req.headers, "Transfer-Encoding", "chunked");
-  uv_http_header_set(req.headers, "Content-Type", "text/plain");
+  uv_http_header_set(req.headers, "transfer-encoding", "chunked");
+  uv_http_header_set(req.headers, "content-type", "text/plain");
+  uv_http_header_set(req.headers, "connection", "close");
 
-  struct sockaddr_in req_addr;
-  uv_ip4_addr("127.0.0.1", 3000, &req_addr);
-  // uv_ip4_addr("172.217.6.163", 80, &req_addr);
-  uv_tcp_t client;
-  uv_tcp_init(loop, &client);
+  uv_http_client_t client;
+  uv_http_client_init(loop, &client, &settings);
 
-  // TCP コネクション用の構造体
-  uv_connect_t connect_req;
-  connect_req.data = &req;
+  uv_http_client_req(&client, &req, oc);
 
-  // 接続
-  uv_tcp_connect(&connect_req, (uv_tcp_t *)&client,
-                 (const struct sockaddr *)&req_addr, on_connect);
+  // uv_http_client_req();
 
   uv_run(loop, UV_RUN_DEFAULT);
 

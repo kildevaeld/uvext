@@ -13,16 +13,16 @@ const server = http.createServer((req, res) => {
     console.log('Method ', req.method);
     req.on('data', function (data) {
         body += data;
-        console.log("Partial body: " + body);
+        console.log("Partial body: " + data, Buffer.byteLength(data));
     });
     req.on('end', function () {
         console.log("Body: " + body);
 
     });
 
-    res.write("Hello, World!");
-    res.end();
-    //r.pipe(res);
+    //res.write("Hello, World!");
+    //res.end();
+    r.pipe(res);
     //res.end();
 })
 

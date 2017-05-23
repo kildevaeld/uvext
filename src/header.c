@@ -2,12 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+
 static uv_http_header_t *uv_header_find(uv_http_header_t *head,
                                         const char *field) {
   uv_http_header_t *next = head;
 
   while (next) {
-    if (strcmp(field, head->field) == 0) {
+   
+    if (strcmp(field, next->field) == 0) {
       return next;
     }
     next = next->next;
@@ -34,6 +37,7 @@ void uv_http_header_set(uv_http_header_t *head, const char *field,
       add = 1;
     }
     strcpy(h->field, field);
+    
   }
   strcpy(h->value, value);
   if (add) {
@@ -97,11 +101,14 @@ void uv_http_header_append(uv_http_header_t *head, uv_http_header_t *header) {
 
 int uv_http_header_size(uv_http_header_t *head) {
   int size = 0;
-  if (head)
+  if (!head)
     return size;
-  while (head->next != NULL) {
+  /*while (head->next != NULL) {
     size += strlen(head->field) + strlen(head->value);
     head = head->next;
+  }*/
+  uv_http_header_foreach(item, head) {
+    size += strlen(item->field) + strlen(item->value);
   }
   return size;
 }

@@ -17,12 +17,6 @@ static void on_res_end(uv_handle_t *handle);
   fprintf(stderr, "%s: [%s(%d): %s]\n", msg, uv_err_name((r)), r,              \
           uv_strerror((r)));
 
-void uv_http_client_init(uv_loop_t *loop, uv_http_client_t *client) {
-  uv_http_parser_init(&client->parser, NULL, NULL, NULL);
-  client->loop = loop;
-  client->data = NULL;
-}
-
 void uv_http_request_init(uv_http_req_t *req) {
   uv_http_parser_init(&req->parser, NULL, NULL, NULL);
 
@@ -156,16 +150,20 @@ int uv_http_request(uv_stream_t *stream, uv_http_req_t *req,
   uv_write_t *write_req = malloc(sizeof(uv_write_t));
   write_req->data = req;
   // stream->data = req;
-
+  //debug("request: %s\n", message);
   return uv_write(write_req, stream, &buf, 1, on_write_end);
-}
-
-int uv_http_write(uv_http_client_t *client, const char *data, int size) {
-  // O
-  return 0;
 }
 
 int uv_http_request_end(uv_stream_t *stream, uv_http_req_t *req) {
   stream->data = req;
   uv_read_start(stream, alloc_cb, on_req_read);
+}
+
+int uv_http_req_write_headers(uv_write_t *write, uv_stream_t *stream, uv_http_req_t *req, uv_write_cb cb) {
+  char message[uv_http_header_size(req->headers) + strlen(req->path) + 20];
+  uv_buf_t buf;// = uv_buf_init(message, write_request(req, message));
+  buf.len = write_request(req, message);
+  buf.base = message;
+  
+  return uv_write(write, stream, &buf, 1, on_write_end);
 }
