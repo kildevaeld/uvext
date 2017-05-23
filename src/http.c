@@ -172,6 +172,7 @@ int uv_http_client_req(uv_http_client_t *client, uv_http_client_req_t *req,
   req->parser.on_data = client->settings->on_data;
   req->parser.on_header_complete = client->settings->on_header_complete;
 
+  // TODO: Handle IP6
   if (is_ip(req->host)) {
     uv_tcp_init(client->loop, (uv_tcp_t *)&client->handle);
 
