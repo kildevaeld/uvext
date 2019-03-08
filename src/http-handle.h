@@ -46,7 +46,8 @@ void uv_http_request_init(uv_http_req_t *req);
 int uv_http_request(uv_stream_t *stream, uv_http_req_t *req,
                     uv_http_req_settings_t *settings);
 
-int uv_http_req_write_headers(uv_write_t *write,uv_stream_t *stream, uv_http_req_t *req, uv_write_cb cb);
+int uv_http_req_write_headers(uv_write_t *write, uv_stream_t *stream,
+                              uv_http_req_t *req, uv_write_cb cb);
 
 // int uv_http_write(uv_http_client_t *client, const char *data, int size);
 

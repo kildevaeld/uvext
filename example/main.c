@@ -22,7 +22,7 @@ void on_data(uv_http_parser_t *req, const char *data, size_t size) {
   char buf[size + 1];
   strncpy(buf, data, size);
   buf[size] = '\0';
-  printf("data = '%s'\n", buf);
+  //printf("data = '%s'\n", buf);
 }
 
 static uv_http_req_settings_t settings = {.on_parse_complete = on_complete,

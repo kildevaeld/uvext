@@ -10,7 +10,8 @@ const server = http.createServer((req, res) => {
     let r = fs.createReadStream('./libs/http-parser/http_parser.c');
 
     var body = '';
-    console.log('Method ', req.method);
+   
+    
     req.on('data', function (data) {
         body += data;
         console.log("Partial body: " + data, Buffer.byteLength(data));
